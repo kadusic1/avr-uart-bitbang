@@ -3,14 +3,264 @@
 %
 \chapter{Opcode i cycle analiza instrukcija}
 \label{chap:opcode}
+U ovom poglavlju izvodi se vremenska analiza programa na nivou
+pojedinačnih instrukcija procesora. U prvom dijelu opisuje se skup AVR
+instrukcija korišten u implementaciji, uz njihov opkod i tačan broj
+ciklusa izvršavanja. U
+drugom dijelu, na osnovu tako utvrđenog broja ciklusa svake instrukcije,
+izvodi se formula kojom se određuje broj ponavljanja petlje za kašnjenje
+potreban da se ostvari tačno definisano vremensko trajanje, i to kako za
+punu bit periodu korištenu prilikom slanja i prijema svakog pojedinačnog
+bita, tako i za poravnanje na sredinu bita prilikom prijema okvira.
 %
 \section{Instrukcije i njihov tajming}
 \label{sec:instructions}
 %
-abc
+U implementaciji je korišten ograničen skup AVR instrukcija, odabran tako
+da se ponašanje programa u vremenu može unaprijed tačno predvidjeti, u
+broju ciklusa procesora. U nastavku je dat kratak opis funkcije svake
+korištene instrukcije, grupisan prema njenoj namjeni, nakon čega slijedi
+tabela sa opkodom i tačnim brojem ciklusa
+izvršavanja.
+
+Instrukcije SBI i CBI koriste se za postavljanje i brisanje pojedinačnog
+bita u I/O registru. SBI (\foreignlanguage{english}{Set Bit in I/O
+Register}) postavlja jedan određeni bit unutar donjih 32 I/O registara na
+logičku jedinicu, bez uticaja na ostale bite istog registra, dok CBI
+(\foreignlanguage{english}{Clear Bit in I/O Register}) na isti način
+briše jedan određeni bit, postavljajući ga na logičku nulu. Instrukcije
+SBIC i SBRC ispituju stanje jednog bita i, u zavisnosti od ishoda,
+preskaču narednu instrukciju. SBIC
+(\foreignlanguage{english}{Skip if Bit in I/O Register is Cleared})
+ispituje bit u I/O registru i preskače narednu instrukciju ako je taj
+bit jednak nuli, dok SBRC
+(\foreignlanguage{english}{Skip if Bit in Register is Cleared}) ima
+analognu funkciju, s tim da ispituje bit unutar registra opće namjene
+umjesto I/O registra.
+
+RJMP (\foreignlanguage{english}{Relative Jump}) izvodi bezuslovni skok na
+adresu izraženu relativno u odnosu na trenutnu vrijednost brojača
+programa. RCALL (\foreignlanguage{english}{Relative Call to Subroutine})
+izvodi poziv potprograma na relativnu adresu, pri čemu se prethodno na
+stek odlaže povratna adresa. RET (\foreignlanguage{english}{Return from
+Subroutine}) skida povratnu adresu sa steka i nastavlja izvršavanje
+programa od te adrese, čime se završava potprogram pozvan instrukcijom
+RCALL. BRNE (\foreignlanguage{english}{Branch if Not Equal}) je uslovni
+skok koji ispituje zastavicu Z u statusnom registru i izvodi skok samo
+ako ta zastavica nije postavljena, odnosno ako rezultat prethodne
+operacije nije bio jednak nuli.
+
+DEC (\foreignlanguage{english}{Decrement}) umanjuje sadržaj registra
+opće namjene za jedan. SBIW
+(\foreignlanguage{english}{Subtract Immediate from Word}) oduzima
+neposrednu konstantu od para 16-bitnih registara. LSR
+(\foreignlanguage{english}{Logical Shift Right}) pomjera sve bite
+registra za jedno mjesto udesno, pri čemu se bit koji izlazi iz registra
+smješta u zastavicu prijenosa, a na najznačajniju poziciju upisuje se
+nula. ROR (\foreignlanguage{english}{Rotate Right through Carry}) izvodi
+rotaciju bita udesno kroz zastavicu prijenosa, tako da se prethodna
+vrijednost te zastavice upisuje na najznačajniju poziciju registra, a
+bit koji izlazi iz registra postaje njena nova vrijednost. CLR
+(\foreignlanguage{english}{Clear Register}) postavlja sve bite registra
+na nulu.
+
+CLC (\foreignlanguage{english}{Clear Carry Flag}) briše zastavicu
+prijenosa u statusnom registru, postavljajući je na nulu, dok SEC
+(\foreignlanguage{english}{Set Carry Flag}) tu istu zastavicu postavlja
+na jedan. NOP (\foreignlanguage{english}{No Operation}) ne izvodi
+nikakvu operaciju osim što troši tačno jedan ciklus takta, a koristi se
+za precizno poravnanje tajminga. LDI
+(\foreignlanguage{english}{Load Immediate}) upisuje neposrednu konstantu
+u registar opće namjene, pri čemu je ograničena na registre R16 do R31.
+
+Svaki opkod je niz od 16 bita, pri čemu fiksni bitovi
+(0 ili 1) jednoznačno određuju o kojoj se instrukciji radi, dok
+promjenljiva polja predstavljaju operande i u zapisu se označavaju malim
+slovima umjesto konkretnih vrijednosti. Slovo d označava bite koji
+kodiraju odredišni registar (Rd), slovo r bite koji kodiraju izvorni
+registar (Rr), slovo K bite neposredne konstante koja se ugrađuje
+direktno u instrukciju, slovo k bite relativne adrese skoka ili poziva
+potprograma, slovo A bite adrese I/O registra, a slovo b bite koji
+određuju poziciju pojedinačnog bita unutar registra ili I/O registra.
+Broj ponavljanja istog slova u zapisu odgovara broju bita rezervisanih
+za to polje. Na primjer, pet ponavljanja slova d (jedno izdvojeno slovo
+i četiri u nizu dddd) kodira pet bita potrebnih za adresiranje bilo kojeg
+od 32 registra opće namjene, dok pet ponavljanja slova A (AAAA i jedno
+izdvojeno slovo) kodira pet bita potrebnih za adresiranje bilo kojeg od
+32 donja I/O registra.
+
+\begin{table}[H]
+\centering
+\caption{Opkod i broj ciklusa korištenih instrukcija}
+\label{tab:instructions}
+\begin{tabular}{|l|l|c|}
+\hline
+\textbf{Instrukcija} & \textbf{Opkod} & \textbf{Broj ciklusa} \\
+\hline
+SBI   & 1001 1010 AAAA Abbb & 2 \\
+CBI   & 1001 1000 AAAA Abbb & 2 \\
+SBIC  & 1001 1001 AAAA Abbb & 1 / 2 / 3 \\
+SBRC  & 1111 110r rrrr 0bbb & 1 / 2 / 3 \\
+RJMP  & 1100 kkkk kkkk kkkk & 2 \\
+RCALL & 1101 kkkk kkkk kkkk & 3 \\
+RET   & 1001 0101 0000 1000 & 4 \\
+BRNE  & 1111 01kk kkkk k001 & 1 / 2 \\
+DEC   & 1001 010d dddd 1010 & 1 \\
+SBIW  & 1001 0111 KKdd KKKK & 2 \\
+LSR   & 1001 010d dddd 0110 & 1 \\
+ROR   & 1001 010d dddd 0111 & 1 \\
+CLR   & 0010 01dd dddd dddd & 1 \\
+CLC   & 1001 0100 1000 1000 & 1 \\
+SEC   & 1001 0100 0000 1000 & 1 \\
+NOP   & 0000 0000 0000 0000 & 1 \\
+LDI   & 1110 KKKK dddd KKKK & 1 \\
+\hline
+\end{tabular}
+\end{table}
+
+Instrukcije SBIC i SBRC izvršavaju se u jednom ciklusu kada se uslov
+preskakanja ne ispuni, u dva ciklusa kada se preskače jednoriječna
+instrukcija, te u tri ciklusa kada se preskače dvoriječna instrukcija.
+Instrukcija BRNE izvršava se u jednom ciklusu kada se grananje ne izvrši,
+odnosno u dva ciklusa kada se grananje izvrši. Ova zavisnost broja
+ciklusa od ishoda instrukcije uzima se u obzir prilikom tačnog brojanja
+ciklusa izvršavanja programa. Naveden broj ciklusa za instrukcije RCALL
+i RET odnosi se na uređaje sa 16-bitnim brojačem programa, u kakve spada
+i ATmega328P.
 %
-\section{Primjena: izvod formule za delay}
+\section{Izvod formule za delay}
 \label{sec:delay}
 %
-abc
+U ovom dijelu se, na osnovu broja ciklusa instrukcija utvrđenog u
+prethodnom dijelu, izvodi formula za određivanje broja ponavljanja
+petlje za kašnjenje potrebnog da se ostvari tačno definisano trajanje
+jednog bita.
+
+Brzina prijenosa iznosi 9600 bita u sekundi, dok procesor radi na
+frekvenciji od 16 MHz, odnosno izvršava 16000000 ciklusa u sekundi. Broj
+ciklusa koji odgovara trajanju jednog bita dobija se dijeljenjem
+frekvencije procesora sa brzinom prijenosa
+
+\begin{equation}
+    \label{eq:cycles_per_bit}
+    C_{bit} = \frac{f_{CPU}}{B} = \frac{16000000}{9600} = 1666{,}67
+\end{equation}
+
+Pošto svaka instrukcija procesora traje cio broj ciklusa, ova vrijednost
+se ne može ostvariti tačno, pa se implementacija zasniva na kombinaciji
+instrukcija čiji zbir ciklusa što je moguće bliže odgovara vrijednosti
+iz jednačine \ref{eq:cycles_per_bit}.
+
+Kašnjenje se ostvaruje petljom koja umanjuje sadržaj para 8-bitnih
+registara (ukupno 16 bita) sve dok njegova vrijednost ne dostigne nulu. Petlja se sastoji
+od instrukcije SBIW, koja oduzima jedinicu od para registara, i
+instrukcije BRNE, koja ispituje zastavicu Z i vraća izvršavanje na
+početak petlje ako ona nije postavljena. Prema tabeli \ref{tab:instructions},
+instrukcija SBIW traje uvijek tačno dva ciklusa, dok instrukcija BRNE
+traje dva ciklusa kada se grananje izvrši i jedan ciklus kada se ne
+izvrši, što je slučaj isključivo u posljednjem prolazu kroz petlju, u
+kojem registar dostigne nulu.
+
+Neka je N broj ponavljanja petlje. Prvih $N - 1$ prolaza svaki traje po
+četiri ciklusa, dok posljednji prolaz, u kojem se grananje ne izvrši,
+traje tri ciklusa. Ukupan broj ciklusa same petlje iznosi
+
+\begin{equation}
+    \label{eq:loop_cost}
+    C_{loop}(N) = 4(N - 1) + 3 = 4N - 1
+\end{equation}
+
+Na kraj petlje dodaje se instrukcija RET, koja na uređajima sa
+16-bitnim brojačem programa, u kakve spada i ATmega328P, traje četiri
+ciklusa. Prije ulaska u petlju, potrebno je konstantu N učitati u par
+registara koristeći dvije instrukcije LDI, svaka u trajanju od jednog
+ciklusa, a zatim pozvati potprogram instrukcijom RCALL, koja traje tri
+ciklusa. Ukupan broj ciklusa od trenutka poziva potprograma za kašnjenje
+do povratka iz njega, u zavisnosti od odabranog broja ponavljanja N,
+iznosi
+
+\begin{equation}
+    \label{eq:delay_formula}
+    D(N) = \underbrace{1 + 1}_{\text{LDI}} + \underbrace{3}_{\text{RCALL}} + \underbrace{(4N - 1)}_{\text{petlja}} + \underbrace{4}_{\text{RET}} = 4N + 8
+\end{equation}
+
+Jednačina \ref{eq:delay_formula} predstavlja opštu formulu koja se u
+nastavku primjenjuje na dva slučaja različitog ciljanog trajanja, punu
+bit periodu i poravnanje na sredinu bita prilikom prijema.
+
+Prilikom slanja i prijema svakog pojedinačnog bita, poziv potprograma za
+kašnjenje okružen je dodatnim instrukcijama koje same po sebi troše
+određen broj ciklusa i koje je stoga potrebno uzeti u obzir prilikom
+određivanja broja ponavljanja N. Postavljanje ili čitanje vrijednosti
+bita izvodi se simetričnim blokom instrukcija, konstruisanim tako da obje
+moguće vrijednosti bita, nula i jedan, zahtijevaju isti broj ciklusa. Kod
+slanja, vrijednost bita se ispituje instrukcijom SBRC, nakon čega se, u
+zavisnosti od ishoda, izvršava instrukcija SBI ili CBI. Ako je vrijednost
+bita jednaka nuli, instrukcija SBRC preskače naredni skok pa se
+izvršavaju instrukcije SBRC, CBI i RJMP, u ukupnom trajanju od $2 + 2 +
+2 = 6$ ciklusa. Ako je vrijednost bita jednaka jedan, instrukcija SBRC ne
+preskače, pa se izvršavaju instrukcije SBRC, RJMP, SBI i NOP, u ukupnom
+trajanju od $1 + 2 + 2 + 1 = 6$ ciklusa. Dodana instrukcija NOP u drugom
+slučaju služi isključivo izjednačavanju broja ciklusa sa prvim slučajem.
+Nakon poziva potprograma za kašnjenje, slijede instrukcije LSR, DEC i
+BRNE, u ukupnom trajanju od $1 + 1 + 2 = 4$ ciklusa, osim u posljednjem
+prolazu kroz osam podatkovnih bita, u kojem se grananje ne izvrši i
+ukupno trajanje iznosi tri ciklusa. Zbir ciklusa svih instrukcija koje
+okružuju poziv potprograma za kašnjenje, izvan samog potprograma, iznosi
+prema tome deset ciklusa, u sedam od osam prolaza kroz petlju. Postavljanje
+start i stop bita, koje ne zahtijeva ispitivanje vrijednosti, izvedeno je
+instrukcijom SBI ili CBI u trajanju od dva ciklusa, nakon čega slijedi
+osam instrukcija NOP u ukupnom trajanju od osam ciklusa, čime i ovaj dio
+koda dostiže isti zbir od deset ciklusa, jednak zbiru dobijenom kod
+podatkovnih bita.
+
+Ciljno trajanje potprograma za kašnjenje dobija se, prema tome,
+oduzimanjem tog fiksnog dijela od ukupnog broja ciklusa po bitu
+
+\begin{equation}
+    D(N) = 1667 - 10 = 1657
+\end{equation}
+
+Uvrštavanjem u jednačinu \ref{eq:delay_formula} dobija se
+
+\begin{equation}
+    4N + 8 = 1657 \quad \Rightarrow \quad N = \frac{1649}{4} = 412{,}25
+\end{equation}
+
+Pošto N predstavlja broj ponavljanja petlje, mora imati cjelobrojnu
+vrijednost, pa se usvaja $N = 412$. Uvrštavanjem ove vrijednosti u
+jednačinu \ref{eq:delay_formula} dobija se stvarno trajanje potprograma
+za kašnjenje od $D(412) = 4 \cdot 412 + 8 = 1656$ ciklusa, čime ukupno
+trajanje jednog bita iznosi $1656 + 10 = 1666$ ciklusa, odnosno svega
+$0{,}67$ ciklusa manje od vrijednosti dobijene u jednačini
+\ref{eq:cycles_per_bit}, što odgovara relativnom odstupanju od
+$0{,}04\%$ i zanemarivo je u odnosu na dozvoljeno odstupanje brzine
+prijenosa kod asinhronog serijskog prijenosa.
+
+Drugi slučaj primjene jednačine \ref{eq:delay_formula} odnosi se na
+poravnanje trenutka očitavanja na sredinu bita prilikom prijema. Nakon
+što je detektovana silazna ivica start bita, prijemnik mora sačekati
+jednu punu trajanje start bita, kako bi se pomjerio na naredni bit, i
+dodatno pola trajanja bita, kako bi se pozicionirao na sredinu tog bita,
+umjesto na njegov početak. Ukupno potrebno kašnjenje iznosi, prema tome,
+$1{,}5$ bit perioda. Za razliku od prethodnog slučaja, ovaj poziv
+potprograma za kašnjenje ne okružuju nikakve dodatne instrukcije čije bi
+trajanje trebalo uzeti u obzir, pa se ciljni broj ciklusa računa
+neposredno iz definicije brzine prijenosa
+
+\begin{equation}
+    C_{align} = 1{,}5 \cdot \frac{f_{CPU}}{B} = \frac{1{,}5 \cdot 16000000}{9600} = \frac{24000000}{9600} = 2500
+\end{equation}
+
+Za razliku od jednačine \ref{eq:cycles_per_bit}, ova vrijednost je cio
+broj, jer se u ovom slučaju brojnik dijeli sa imeniocem bez ostatka.
+Uvrštavanjem u jednačinu \ref{eq:delay_formula} dobija se
+
+\begin{equation}
+    4N + 8 = 2500 \quad \Rightarrow \quad N = \frac{2492}{4} = 623
+\end{equation}
+
+Ova vrijednost je takođe cio broj, pa se u ovom slučaju ne javlja
+odstupanje uslijed zaokruživanja, i broj ponavljanja petlje za poravnanje
+na sredinu bita iznosi tačno $N = 623$.
 %
