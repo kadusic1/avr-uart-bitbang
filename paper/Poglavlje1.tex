@@ -4,13 +4,126 @@
 \chapter{Teorijska osnova}
 \label{chap:theory}
 %
+U ovom poglavlju izlaže se teorijska osnova neophodna za razumijevanje
+implementacije opisane u narednim poglavljima. Prvo se objašnjava format
+UART okvira i način na koji se iz njega izvodi brzina prijenosa podataka,
+kao i razlog zbog kojeg se prijem vrši na sredini bita. Zatim se opisuju
+dijelovi AVR arhitekture koji se koriste u implementaciji: registri opće
+namjene, status registar SREG, ulazno-izlazni portovi te trajanje
+izvršavanja instrukcija u taktovima.
+%
 \section{UART protokol}
 \label{sec:uart}
 %
-abc
+UART je asinhroni serijski protokol, što znači da predajnik i prijemnik ne
+dijele zajedničku liniju takta. Podaci se prenose u okvirima koji se
+sastoje od start bita, osam podatkovnih bita i stop bita. Linija je u
+mirovanju (\foreignlanguage{english}{idle}) na visokom naponskom nivou, a
+start bit se signalizira prelaskom linije na nizak nivo, čime prijemnik
+prepoznaje početak novog okvira. Nakon start bita slijedi osam podatkovnih
+bita, pri čemu se prvo prenosi bit najmanje težine
+(\foreignlanguage{english}{LSB}). Okvir se završava stop bitom, tokom
+kojeg se linija vraća na visok nivo, čime se osigurava razmak prije
+eventualnog sljedećeg okvira.
+
+Brzina prijenosa (\foreignlanguage{english}{baud rate}) predstavlja broj
+bita koji se prenese u jednoj sekundi i definiše se kao recipročna
+vrijednost trajanja jednog bita, odnosno $B = 1/T_{bit}$, gdje je
+$T_{bit}$ trajanje jednog bita izraženo u sekundama. Pošto predajnik i
+prijemnik ne dijele zajednički takt, oba uređaja moraju unaprijed
+poznavati istu vrijednost $T_{bit}$ kako bi tajming predaje i prijema bio
+usklađen.
+
+Pošto UART protokol ne koristi zajedničku liniju takta, prijemnik mora
+sam odrediti trenutak u kojem će očitati vrijednost svakog bita, na
+osnovu poznate brzine prijenosa i trenutka detekcije start bita. Ivice
+bita, odnosno prelazi između susjednih bita, najosjetljivije su na šum i
+na malo odstupanje takta između predajnika i prijemnika, pa bi očitavanje
+na samoj ivici moglo dati pogrešnu vrijednost. Očitavanjem na sredini
+bita ostavlja se maksimalna vremenska margina sa obje strane, čime se
+povećava otpornost prijema na akumulirano odstupanje tajminga tokom
+trajanja okvira.
 %
 \section{AVR arhitektura}
 \label{sec:avr}
 %
-abc
+ATmega328P mikrokontroler sadrži 32 8-bitna registra opće namjene, označena od R0 do R31,
+organizovana u registar
+\foreignlanguage{english}{file} koji je direktno povezan sa
+aritmetičko-logičkom jedinicom. Ovakva organizacija omogućava da se
+većina aritmetičkih i logičkih operacija izvrši u jednom ciklusu takta,
+jer se oba operanda čitaju iz registar \foreignlanguage{english}{file}-a
+i rezultat se u istom ciklusu upisuje nazad. Ovi registri su namijenjeni
+isključivo za privremeno čuvanje podataka i izvođenje proračuna unutar
+CPU jezgra i sami po sebi nemaju nikakav uticaj na fizičke pinove
+mikrokontrolera.
+
+Za upravljanje perifernim jedinicama, uključujući i digitalne ulazno-izlazne
+pinove, mikrokontroler posjeduje zaseban adresni prostor
+ulazno-izlaznih (I/O) registara, fizički odvojen od registar
+\foreignlanguage{english}{file}-a registara opće namjene. Dok registri
+opće namjene služe isključivo procesoru za privremeno čuvanje podataka,
+I/O registri predstavljaju direktno preslikavanje stanja i konfiguracije
+hardvera, poput porta, i svaka promjena njihove vrijednosti odmah se
+odražava na fizičkom pinu. Ovaj zaseban prostor takođe omogućava da se
+pojedinačni bit u I/O registru postavi ili obriše bez potrebe da se
+prethodno pročita i ponovo upiše cijeli sadržaj registra, što je posebno
+značajno kada je potrebno precizno kontrolisati trajanje operacije u
+ciklusima.
+
+Svaki digitalni I/O port, na primjer port D, kontroliše se pomoću tri
+odvojena I/O registra. Registar DDRx određuje smjer svakog pojedinačnog
+pina tog porta, odnosno da li se pin ponaša kao ulaz ili izlaz. Registar
+PORTx ima dvostruku ulogu koja zavisi od stanja odgovarajućeg bita u
+DDRx: kada je pin konfigurisan kao izlaz, bit u PORTx direktno određuje
+da li je na pinu prisutan nizak ili visok naponski nivo, dok kod
+ulaznog pina isti bit uključuje ili isključuje interni pull-up otpornik.
+Registar PINx je, za razliku od druga dva, namijenjen isključivo čitanju
+i uvijek odražava stvarni trenutni naponski nivo prisutan na fizičkom
+pinu, bez obzira na to da li je taj pin konfigurisan kao ulaz ili izlaz.
+Na primjer, da bi se neki pin porta D postavio u stanje logičke
+jedinice, potrebno je najprije u registru DDRD postaviti odgovarajući
+bit na jedan, čime se taj pin konfiguriše kao izlazni, a zatim u
+registru PORTD postaviti isti bit na jedan, čime se na tom pinu
+uspostavlja visok naponski nivo.
+
+Status registar (SREG) je poseban I/O registar širine 8 bita, u kojem
+svaki pojedinačni bit predstavlja zasebnu zastavicu koja nakon izvršenja
+većine aritmetičkih i logičkih operacija bilježi neko svojstvo dobijenog
+rezultata. Registar sadrži sljedećih osam zastavica:
+
+\begin{itemize}
+    \item C (\foreignlanguage{english}{Carry}) - zastavica prijenosa,
+        postavlja se kada operacija proizvede prijenos ili posudbu izvan
+        granice od 8 bita;
+    \item Z (\foreignlanguage{english}{Zero}) - postavlja se kada je
+        rezultat posljednje operacije jednak nuli;
+    \item N (\foreignlanguage{english}{Negative}) - odražava najznačajniji
+        bit rezultata i pokazuje da li je rezultat negativan;
+    \item V (\foreignlanguage{english}{Overflow}) - zastavica
+        prekoračenja opsega kod aritmetike sa predznakom;
+    \item S (\foreignlanguage{english}{Sign}) - stvarni predznak
+        rezultata, dobijen kao isključivo ILI zastavica N i V;
+    \item H (\foreignlanguage{english}{Half Carry}) - prijenos između
+        nižeg i višeg nibla bajta, koristan kod BCD aritmetike;
+    \item T (\foreignlanguage{english}{Bit Copy Storage}) - jednobitno
+        mjesto za privremeno čuvanje vrijednosti jednog bita prilikom
+        prenošenja između registara;
+    \item I (\foreignlanguage{english}{Global Interrupt Enable}) -
+        globalno omogućava ili onemogućava obradu prekida.
+\end{itemize}
+
+Sadržaj ovog registra se može ispitati kako bi program donio odluku o
+daljem toku izvršavanja, na primjer da li će se izvršiti uslovni skok,
+čime SREG postaje osnovni mehanizam preko kojeg se ostvaruje uslovno
+grananje u programu.
+
+Većina AVR instrukcija izvršava se u jednom ciklusu takta, zahvaljujući
+jednostepenom pipeline-u u kojem se dohvatanje sljedeće instrukcije
+preklapa sa izvršavanjem trenutne. Instrukcije koje mijenjaju tok
+programa, poput relativnih skokova i poziva potprograma, instrukcije
+koje ispituju bit i uslovno preskaču sljedeću instrukciju, te uslovni
+skokovi kada se grananje zaista izvrši, zahtijevaju dodatni ciklus ili
+više, jer se u tim slučajevima pipeline mora isprazniti ili se dodatno
+pristupa memoriji programa odnosno steku.
 %
