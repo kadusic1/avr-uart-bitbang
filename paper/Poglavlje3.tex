@@ -96,6 +96,15 @@ programa prikazana je na slici \ref{fig:architecture}.
 \label{fig:architecture}
 \end{figure}
 
+Direktivom \emph{.DEF} u izvornom kodu imenovana su dva registra opće
+namjene. Registar \emph{temp} privremeno čuva bajt koji se šalje ili
+bajt koji je upravo primljen, dok registar \emph{bitcnt} broji preostale
+bite prilikom slanja ili prijema jednog okvira podataka. Par registara
+R24 i R25 koristi se kao zajednički šesnaestobitni brojač unutar
+potprograma za kašnjenje, s tim da ovaj par, za razliku od prethodna
+dva registra, zadržava svoju brojčanu oznaku bez dodijeljenog
+simboličkog imena, jer se koristi isključivo unutar jednog potprograma
+i ne prenosi se u druge dijelove programa.
 
 Potprogram \emph{uart\_putc} šalje sadržaj registra koji čuva bajt namijenjen
 slanju, počevši od bita najmanje težine. Vrijednost svakog bita
@@ -109,6 +118,29 @@ stanje prijemnog pina instrukcijom \emph{SBIC} u trenutku koji odgovara sredini
 svakog pojedinačnog bita, i tako dobijenu vrijednost postepeno unosi u
 registar rezultata instrukcijom \emph{ROR}, koja rotira sadržaj registra
 udesno kroz zastavicu prijenosa.
+
+Radi usklađivanja sa proračunom iznesenim u poglavlju \ref{sec:delay},
+prema kojem fiksni dio koda oko poziva potprograma za kašnjenje mora
+iznositi tačno deset ciklusa, definisana su dva pomoćna makroa. Makro
+\emph{PAD8} ubacuje niz od osam instrukcija \emph{NOP}, koji zajedno sa
+instrukcijom za postavljanje start ili stop bita čini blok od deset
+ciklusa, jednak trajanju bloka korištenog prilikom slanja podatkovnih
+bita. Makro \emph{PAD3} ubacuje niz od tri instrukcije \emph{NOP} unutar
+potprograma \emph{uart\_getc}, čime se blok za ispitivanje jednog bita
+pri prijemu, koji sam po sebi troši manje ciklusa od odgovarajućeg
+bloka pri slanju, dovodi na isti ukupan broj ciklusa, tako da se za oba
+potprograma može koristiti isti potprogram za kašnjenje sa istim
+brojem ponavljanja petlje.
+
+Prije samog prijema podatkovnih bita, potprogram \emph{uart\_getc} u
+petlji ispituje stanje prijemnog pina instrukcijom \emph{SBIC}, čekajući
+da ono pređe iz logičke jedinice, koja odgovara stanju mirovanja linije,
+u logičku nulu, čime se detektuje silazna ivica start bita. Nakon
+detekcije, poziva se potprogram za kašnjenje sa brojem ponavljanja
+izračunatim za trajanje od jedan i po bit period, izvedenim u
+jednačinama \ref{eq:cycles_per_bit} do \ref{eq:delay_formula}, tako da
+se naredno očitavanje pozicionira na sredinu prvog podatkovnog bita
+umjesto na njegov početak.
 
 Za postavljanje i ispitivanje pojedinačnih bita korištene su instrukcije
 \emph{SBI}, \emph{CBI}, \emph{SBIC} i \emph{SBRC} umjesto instrukcije \emph{OUT}, koja upisuje
@@ -152,14 +184,42 @@ potrebe za dodatnim spoljnim komponentama.
 \section{Testiranje}
 \label{sec:testing}
 %
+Razvojno i testno okruženje temeljeno je na operativnom sistemu
+\foreignlanguage{english}{Ubuntu 24.04 LTS} (kodnog imena
+\foreignlanguage{english}{Noble Numbat}), instaliranom na prijenosnom
+računaru. Za asembliranje izvornog koda u ovom okruženju korišten je
+alat \emph{avra}, otvoreni asembler dostupan iz standardnih repozitorija
+distribucije, koji se pokreće iz komandne linije i ne zahtijeva grafičko
+sučelje niti instalaciju proizvođačkog razvojnog okruženja. Sintaksa
+koju \emph{avra} prihvata u potpunosti odgovara ranije opisanoj
+\foreignlanguage{english}{AVRASM2} sintaksi iz poglavlja
+\ref{sec:syntax}, uključujući sve korištene direktive i definiciju
+makroa, zbog čega izvorni kod nije bilo potrebno prilagođavati
+konkretnom alatu. Alatu se prosljeđuje putanja do glavnog izvornog
+fajla, uz opciju kojom se navode dodatne putanje za pretragu fajlova
+uključenih direktivom \emph{.INCLUDE}, a kao rezultat asembliranja
+generišu se \foreignlanguage{english}{HEX} fajl namijenjen programiranju
+mikrokontrolera i fajl liste ispisa, koji sadrži mašinski kod svake
+instrukcije uz njenu adresu u memoriji programa.
+
 Testiranje programa izvedeno je isključivo funkcionalnim putem, bez
 upotrebe mjernih instrumenata poput osciloskopa ili logičkog analizatora,
 pa se vremenska tačnost prijenosa oslanja na proračun iznesen u poglavlju
 \ref{chap:opcode}, a testiranjem se provjerava isključivo ispravnost
 komunikacije.
 
-Program je učitan u mikrokontroler naredbom \emph{avrdude}, nakon čega je za
-komunikaciju sa pločom preko serijskog priključka korišten programski
+Program je učitan u mikrokontroler naredbom \emph{avrdude}, programskim
+alatom namijenjenim programiranju \foreignlanguage{english}{AVR}
+mikrokontrolera preko komandne linije, koji podržava veliki broj
+programatora i tipova memorije. Alatu se prosljeđuje oznaka tipa
+programatora, koja u slučaju ploče Arduino Uno R3 odgovara ugrađenom
+bootloaderu dostupnom preko istog serijskog priključka korištenog i za
+samu \foreignlanguage{english}{UART} komunikaciju, zatim oznaka
+ciljanog mikrokontrolera, putanja do serijskog uređaja, brzina
+prijenosa korištena isključivo prilikom programiranja i putanja do
+prethodno generisanog \foreignlanguage{english}{HEX} fajla koji se
+upisuje u fleš memoriju programa. Nakon što je program učitan, za
+komunikaciju sa pločom preko serijskog priključka korišten je programski
 alat \emph{tio}, namijenjen jednostavnoj komunikaciji sa serijskim uređajima
 preko komandne linije. Nakon uspostavljanja veze, sa tastature je unesen
 proizvoljan niz karaktera, koji se u terminalu pojavljuje tek nakon što
