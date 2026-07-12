@@ -4,18 +4,170 @@
 \chapter{Implementacija}
 \label{chap:implementation}
 %
+U ovom poglavlju opisuje se praktična implementacija programa. Prvo se
+opisuje sintaksa i skup direktiva korišten pri pisanju izvornog koda,
+zatim algoritam slanja i prijema podataka sa objašnjenjem odabira
+korištenih instrukcija, i na kraju postupak testiranja programa.
+%
 \section{Sintaksa i direktive AVR asemblera}
 \label{sec:syntax}
 %
-abc
+Izvorni kod pisan je u sintaksi asemblera \foreignlanguage{english}{AVRASM2}, čiji je
+formatiran opis dat u zvaničnom priručniku proizvođača. Svaka linija
+izvornog koda sastoji se od opcione oznake (\foreignlanguage{english}{label}), mnemonika
+instrukcije, njenih operanada i opcionog komentara koji počinje znakom
+tačka-zarez. Oznaka predstavlja simboličko ime dodijeljeno određenoj
+adresi u memoriji programa i koristi se kao odredište instrukcija skoka
+i poziva potprograma, umjesto direktnog navođenja brojčane adrese.
+
+Pored samih instrukcija procesora, izvorni kod sadrži i direktive
+asemblera, koje ne predstavljaju izvršni kod već upute samom asembleru
+kako da protumači i organizuje ostatak izvornog koda. Direktiva
+\emph{.CSEG} označava početak segmenta koda, odnosno dijela memorije u koji se
+smještaju izvršne instrukcije programa. Direktiva \emph{.ORG} postavlja
+lokacijski brojač asemblera na određenu adresu, čime se narednoj
+instrukciji dodjeljuje tačno određeno mjesto u memoriji programa, što je
+neophodno na samom početku programa kako bi se instrukcija skoka na
+glavni dio programa postavila na adresu resetnog vektora.
+
+Direktiva \emph{.EQU} dodjeljuje simboličko ime numeričkoj konstanti, čime se
+u izvornom kodu umjesto brojčane vrijednosti može koristiti opisno ime,
+što povećava čitljivost koda i olakšava naknadne izmjene, jer se
+vrijednost mijenja na jednom mjestu umjesto na svakom mjestu njenog
+pojavljivanja. Direktiva \emph{.DEF} dodjeljuje simboličko ime jednom od
+registara opće namjene, na sličan način kao \emph{.EQU}, s tim da se
+umjesto brojčane konstante alicira sam registar, čime pridijeljeno ime
+u nastavku izvornog koda zamjenjuje oznaku registra poput \emph{R16}.
+
+Direktive \emph{.MACRO} i \emph{.ENDMACRO} zajedno omeđuju definiciju makroa, odnosno
+imenovanog niza instrukcija koji se, gdje god se njegovo ime pozove u
+nastavku izvornog koda, u potpunosti zamjenjuje tim nizom instrukcija
+prije samog procesa asembliranja. Za razliku od poziva potprograma,
+makro ne izvodi skok niti odlaganje povratne adrese na stek, već se
+njegov sadržaj doslovno umnožava na svakom mjestu poziva, što povećava
+veličinu generisanog koda ali izbjegava troškove izvršavanja instrukcija
+za poziv i povratak iz potprograma. Direktiva \emph{.INCLUDE} uključuje
+sadržaj navedenog fajla na mjestu njenog poziva, kao da je taj sadržaj
+neposredno prepisan u izvorni kod, čime se omogućava podjela programa
+na više fajlova organizovanih prema njihovoj funkciji.
+
+Pored direktiva za definisanje makroa, \foreignlanguage{english}{AVRASM2} sintaksa
+omogućava i definisanje potprograma, odnosno imenovanog dijela koda
+kojem se može pristupiti sa više različitih mjesta u programu bez
+umnožavanja samog koda. Potprogram se definiše običnom oznakom koja
+označava njegovu početnu adresu, a poziva se instrukcijom \emph{RCALL}, koja
+prije skoka na tu adresu na stek odlaže adresu naredne instrukcije u
+pozivajućem kodu. Potprogram se završava instrukcijom \emph{RET}, koja tu
+odloženu adresu skida sa steka i nastavlja izvršavanje programa od nje.
+Ovaj mehanizam odgovara pojmu funkcije ili procedure u jezicima višeg
+nivoa, s tim da asembler ne provjerava tipove niti broj argumenata, već
+je na programeru da razmjenu podataka sa potprogramom organizuje ručno,
+najčešće preko unaprijed dogovorenih registara.
 %
 \section{Algoritam i kod}
 \label{sec:algorithm}
 %
-abc
+Program se sastoji od glavnog dijela koji vrši početnu konfiguraciju
+pinova i zatim u beskonačnoj petlji naizmjenično poziva dva potprograma,
+jedan za prijem i jedan za slanje jednog bajta podataka, čime se
+ostvaruje \foreignlanguage{english}{echo} efekat, odnosno vraćanja svakog primljenog bajta
+nazad pošiljaocu. Oba potprograma za svoje vremenski precizno kašnjenje
+koriste zajednički potprogram koji koristi mehanizam opisan u poglavlju \ref{sec:delay}. Arhitektura
+programa prikazana je na slici \ref{fig:architecture}.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=1.3cm,
+    box/.style={draw, rounded corners, align=center, minimum width=4cm, minimum height=1cm},
+    arrow/.style={-{Latex}, thick}
+]
+    \node[box] (main) {main \\ konfiguracija pinova};
+    \node[box, below=of main] (loop) {echo\_loop};
+    \node[box, below=of loop] (getc) {uart\_getc \\ prima bajt};
+    \node[box, below=of getc] (putc) {uart\_putc \\ šalje bajt};
+ 
+    \draw[arrow] (main) -- (loop);
+    \draw[arrow] (loop) -- (getc);
+    \draw[arrow] (getc) -- (putc);
+    \draw[arrow] (putc.south) -- ++(0,-0.6) -| ++(-5.2,0) |- (loop.west);
+\end{tikzpicture}
+\caption{Arhitektura programa}
+\label{fig:architecture}
+\end{figure}
+
+
+Potprogram \emph{uart\_putc} šalje sadržaj registra koji čuva bajt namijenjen
+slanju, počevši od bita najmanje težine. Vrijednost svakog bita
+postavlja se na predajni pin instrukcijom \emph{SBI} ili \emph{CBI},
+odabranom u zavisnosti od ispitanog stanja bita instrukcijom \emph{SBRC}. Nakon
+postavljanja bita, poziva se potprogram za kašnjenje, nakon čega se
+sadržaj registra pomjera za jedno mjesto udesno instrukcijom \emph{LSR}, čime se
+naredni bit namijenjen slanju dovodi na poziciju koju ispituje instrukcija
+\emph{SBRC}. Potprogram \emph{uart\_getc} radi obrnutim postupkom, ispitujući
+stanje prijemnog pina instrukcijom \emph{SBIC} u trenutku koji odgovara sredini
+svakog pojedinačnog bita, i tako dobijenu vrijednost postepeno unosi u
+registar rezultata instrukcijom \emph{ROR}, koja rotira sadržaj registra
+udesno kroz zastavicu prijenosa.
+
+Za postavljanje i ispitivanje pojedinačnih bita korištene su instrukcije
+\emph{SBI}, \emph{CBI}, \emph{SBIC} i \emph{SBRC} umjesto instrukcije \emph{OUT}, koja upisuje
+kompletan sadržaj registra opće namjene u odredišni I/O registar. Razlog
+ovog izbora je dvostruk. Prvo, instrukcije za rad sa pojedinačnim bitom
+mijenjaju isključivo naznačeni bit, ne utičući na preostalih sedam bita
+istog registra, dok bi upotreba instrukcije \emph{OUT} zahtijevala da se
+prethodno pročita trenutni sadržaj registra, izmijeni željeni bit
+logičkim operacijama i tek zatim upiše nazad, što unosi dodatne
+instrukcije i time otežava održavanje tačno određenog broja ciklusa po
+bitu. Drugo, sama izmjena jednog bita ovim instrukcijama izvodi se u
+jednoj instrukciji umjesto tri, čime se smanjuje ukupan broj ciklusa
+potrebnih za istu operaciju.
+
+Mapiranje korištenih pinova na fizičke priključke ploče Arduino Uno R3
+prikazano je u tabeli \ref{tab:pinmap}, a preuzeto je sa zvanične
+električne šeme proizvođača ploče.
+
+\begin{table}[H]
+\centering
+\caption{Mapiranje korištenih pinova}
+\label{tab:pinmap}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Uloga} & \textbf{Digitalni pin ploče} & \textbf{Pin mikrokontrolera} \\
+\hline
+Predaja (TX) & 1 & PD1 \\
+Prijem (RX)  & 0 & PD0 \\
+\hline
+\end{tabular}
+\end{table}
+
+Odabir baš ovih pinova nije proizvoljan, jer su digitalni pinovi 0 i 1
+ploče Arduino Uno R3 jedini pinovi fizički povezani, preko serijskih
+otpornika, sa zasebnim mikrokontrolerom koji na istoj ploči služi kao
+posrednik između \foreignlanguage{english}{USB} priključka i serijske
+komunikacije. Ovim izborom omogućena je komunikacija sa računarom
+isključivo preko postojećeg \foreignlanguage{english}{USB} kabla, bez
+potrebe za dodatnim spoljnim komponentama.
 %
 \section{Testiranje}
 \label{sec:testing}
 %
-abc
-%
+Testiranje programa izvedeno je isključivo funkcionalnim putem, bez
+upotrebe mjernih instrumenata poput osciloskopa ili logičkog analizatora,
+pa se vremenska tačnost prijenosa oslanja na proračun iznesen u poglavlju
+\ref{chap:opcode}, a testiranjem se provjerava isključivo ispravnost
+komunikacije.
+
+Program je učitan u mikrokontroler naredbom \emph{avrdude}, nakon čega je za
+komunikaciju sa pločom preko serijskog priključka korišten programski
+alat \emph{tio}, namijenjen jednostavnoj komunikaciji sa serijskim uređajima
+preko komandne linije. Nakon uspostavljanja veze, sa tastature je unesen
+proizvoljan niz karaktera, koji se u terminalu pojavljuje tek nakon što
+ga mikrokontroler primi i pošalje nazad, čime se potvrđuje ispravno
+funkcionisanje predajnog i prijemnog dijela programa u punom krugu.
+Naime, alat \emph{tio} po podrazumijevanoj konfiguraciji ne prikazuje
+lokalno ono što je uneseno sa tastature, već isključivo ono što stigne
+nazad preko serijskog priključka, tako da se prikazivanje unesenog
+karaktera na ekranu ne može pripisati samom terminalskom programu, već
+predstavlja direktan dokaz da je mikrokontroler karakter zaista primio i
+poslao nazad.
