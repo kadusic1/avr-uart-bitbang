@@ -4,14 +4,34 @@
 %
 \vspace*{5 em}
 
-\normalsize\noindent\emph{Sažetak}:
+\normalsize\noindent\emph{Sažetak}: U ovom radu opisuje se implementacija
+asinhronog serijskog \foreignlanguage{english}{UART} protokola na
+mikrokontroleru \foreignlanguage{english}{ATmega328P}, izvedena
+isključivo softverski, bez upotrebe ugrađenog hardverskog
+\foreignlanguage{english}{UART} perifernog modula, pristupom poznatim
+kao \foreignlanguage{english}{bit-banging}. Aktuelnost teme obrazlaže se
+činjenicom da se \foreignlanguage{english}{UART} protokol, uprkos svojoj
+starosti, i dalje široko koristi za komunikaciju sa mikrokontrolerima i
+perifernim uređajima, dok se njegov format okvira može posmatrati kao
+pogodan primjer konačnog automata čije je stanje potrebno precizno
+vremenski uskladiti sa spoljnim signalom, bez oslonca na zajednički
+takt predajnika i prijemnika. Cilj rada je da se, na osnovu poznavanja
+broja ciklusa izvršavanja pojedinačnih instrukcija
+\foreignlanguage{english}{AVR} arhitekture, pokaže na koji način se
+konstruiše potprogram za precizno kašnjenje kojim se ostvaruje zadata
+brzina prijenosa, te da se na osnovu njega implementiraju potprogrami za
+slanje i prijem pojedinačnog bajta podataka. Pri izradi rada korištena
+je analiza opkoda i broja ciklusa korištenih instrukcija, izvođenje
+matematičke formule za broj ponavljanja petlje kašnjenja, kao i
+funkcionalno testiranje realizovanog programa na fizičkoj razvojnoj
+ploči.
 
-\noindent\small{\textbf{\emph{Ključne riječi}: kr}}.
+\noindent\small{\textbf{\emph{Ključne riječi}: ATmega328P, AVR asembler, bit-banging, kašnjenje, mikrokontroler, UART protokol}}.
 
 \vspace{5 em}
 
-\normalsize\noindent\foreignlanguage{english}{\emph{Abstract}: test}
+\normalsize\noindent\foreignlanguage{english}{\emph{Abstract}: In this paper, the implementation of the asynchronous serial UART protocol on the ATmega328P microcontroller is described, carried out entirely in software, without the use of the built-in hardware UART peripheral module, an approach commonly referred to as bit-banging. The relevance of the topic is explained by the fact that the UART protocol, despite its age, is still widely used for communication with microcontrollers and peripheral devices, while its frame format can be regarded as a suitable example of a finite state machine whose state must be precisely timed against an external signal, without relying on a shared clock between the transmitter and the receiver. The aim of the paper is to show, based on knowledge of the number of execution cycles of individual AVR instructions, how a subroutine for precise delay is constructed to achieve the required baud rate, and how it is subsequently used to implement the transmission and reception of a single data byte. The work is based on an analysis of instruction opcodes and cycle counts, the derivation of a mathematical formula for the number of delay loop iterations, and functional testing of the resulting program on a physical development board.}
 
-\noindent\small{\foreignlanguage{english}{\textbf{\emph{Keywords}}: kr}}.
+\noindent\small{\foreignlanguage{english}{\textbf{\emph{Keywords}}: ATmega328P, AVR assembler, baud rate, bit-banging, delay, microcontroller, UART protocol}}.
 \normalsize
 \newpage

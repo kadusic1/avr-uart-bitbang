@@ -7,5 +7,30 @@
 \chapter*{Zaključak}
 \label{chap:conc}
 %
-abc
+U ovom radu realizovan je softverski, odnosno
+\foreignlanguage{english}{bit-banged}, \foreignlanguage{english}{UART}
+protokol na mikrokontroleru \foreignlanguage{english}{ATmega328P}, bez
+upotrebe njegovog ugrađenog hardverskog \foreignlanguage{english}{UART}
+modula. Na osnovu opkoda i tačnog broja ciklusa korištenih instrukcija
+izvedena je opšta formula za broj ponavljanja petlje za kašnjenje, koja
+je zatim primijenjena na punu bit periodu i na poravnanje na sredinu
+bita prilikom prijema, čime je teorijski određen broj ponavljanja
+petlje potreban za ostvarivanje zadate brzine prijenosa.
+
+Ispravnost implementacije provjerena je funkcionalnim testiranjem na
+fizičkoj razvojnoj ploči Arduino Uno R3, uz korištenje alata \emph{avra}
+za asembliranje i alata \emph{avrdude} za programiranje mikrokontrolera.
+Komunikacijom uspostavljenom preko terminalskog alata \emph{tio}
+utvrđeno je da program ispravno prima i vraća nazad svaki poslani
+karakter, čime je potvrđena ispravnost implementiranih potprograma za
+slanje i prijem podataka u punom krugu.
+
+Testiranje je, međutim, izvedeno isključivo na ovaj funkcionalan način,
+bez upotrebe osciloskopa ili logičkog analizatora, tako da stvarno
+trajanje pojedinačnog bita na predajnoj liniji nije nezavisno izmjereno.
+Kao pravac daljeg rada preporučuje se upravo takva empirijska provjera,
+kao i proširenje implementacije mogućnošću podešavanja brzine prijenosa
+i detekcijom greške okvira, čime bi se ostvarena rješenja mogla porediti
+sa ponašanjem hardverskog \foreignlanguage{english}{UART} modula pod
+istim uslovima.
 \newpage

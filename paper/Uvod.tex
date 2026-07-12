@@ -7,6 +7,73 @@
 \label{chap:intro}
 %
 %
-abc
+Serijska komunikacija smatra se jednim od najstarijih i
+najrasprostranjenijih načina razmjene podataka između mikrokontrolera i
+perifernih uređaja, a \foreignlanguage{english}{UART}
+(\foreignlanguage{english}{Universal Asynchronous Receiver-Transmitter})
+protokol je zbog svoje jednostavnosti i malog broja potrebnih linija
+ostao u širokoj upotrebi i danas, uprkos postojanju brojnih novijih
+protokola. Posebno zanimljivim svojstvom ovog protokola smatra se
+njegova asinhronost, odnosno odsustvo zajedničke linije takta između
+predajnika i prijemnika, zbog čega se tačan trenutak očitavanja svakog
+pojedinačnog bita mora unaprijed izračunati na osnovu poznate brzine
+prijenosa. Format okvira, koji se sastoji od tačno određenog niza stanja
+kroz koja linija prolazi u tačno određenom vremenskom rasporedu, smatra
+se pogodnim praktičnim primjerom konačnog automata čije prelaze između
+stanja ne pokreće samo promjena ulaznog signala, već i protok vremena.
+
+Iako su savremeni mikrokontroleri, uključujući i
+\foreignlanguage{english}{ATmega328P} korišten u ovom radu, opremljeni
+ugrađenim hardverskim \foreignlanguage{english}{UART} perifernim
+modulom kojim se ova komunikacija izvodi automatski, kod softverske
+realizacije istog protokola, poznate kao \foreignlanguage{english}{bit-banging},
+tajming svake pojedinačne operacije mora se precizno kontrolisati na
+nivou broja ciklusa procesora. Zbog ove osobine, softverska realizacija
+smatra se pogodnom za razumijevanje veze između arhitekture procesora,
+skupa njegovih instrukcija i vremenski osjetljivih protokola opisanih
+formalnim automatima. Svrha ovog rada je da se na konkretnom primjeru
+pokaže postupak kojim se, polazeći od poznatog broja ciklusa svake
+korištene instrukcije, konstruiše program koji ostvaruje zadatu brzinu
+prijenosa isključivo korištenjem digitalnih ulazno-izlaznih pinova.
+
+U radu će se odgovoriti na pitanje kako se, bez upotrebe hardverskog
+\foreignlanguage{english}{UART} modula, može ostvariti tačno određena
+brzina prijenosa korištenjem petlje za kašnjenje čiji je broj ponavljanja
+izveden iz broja ciklusa procesora. Razmotrit će se koje su instrukcije
+\foreignlanguage{english}{AVR} arhitekture najpogodnije za rad sa
+pojedinačnim bitom ulazno-izlaznog registra i na koji način njihov izbor
+utiče na preciznost i predvidljivost tajminga. Poseban naglasak bit će
+stavljen na pitanje kako se ista petlja za kašnjenje, uz odgovarajuće
+prilagođavanje okolnog koda, može iskoristiti i za slanje i za prijem
+podataka, uprkos tome što se struktura koda oko poziva te petlje
+razlikuje u oba slučaja.
+
+Rad se sastoji iz tri poglavlja. U prvom poglavlju izlaže se teorijska
+osnova neophodna za razumijevanje ostatka rada. Opisuje se format
+\foreignlanguage{english}{UART} okvira i način izvođenja brzine
+prijenosa, kao i razlog očitavanja na sredini bita, a zatim se uvode
+dijelovi \foreignlanguage{english}{AVR} arhitekture koji se koriste u
+implementaciji, uključujući registre opće namjene, status registar
+\foreignlanguage{english}{SREG}, ulazno-izlazne portove i trajanje
+izvršavanja instrukcija u ciklusima.
+
+U drugom poglavlju izvodi se vremenska analiza programa na nivou
+pojedinačnih instrukcija. Opisuje se skup korištenih instrukcija zajedno
+sa njihovim opkodom i tačnim brojem ciklusa izvršavanja, a zatim se, na
+osnovu tako utvrđenih vrijednosti, izvodi opšta formula kojom se
+određuje broj ponavljanja petlje za kašnjenje. Formula se potom
+primjenjuje na dva konkretna slučaja, punu bit periodu i poravnanje na
+sredinu bita prilikom prijema.
+
+U trećem poglavlju opisuje se praktična implementacija programa.
+Objašnjava se sintaksa i skup direktiva korištenih pri pisanju izvornog
+koda, zatim algoritam slanja i prijema podataka uz obrazloženje odabira
+korištenih instrukcija i pomoćnih makroa za usklađivanje broja ciklusa.
+Na kraju poglavlja opisuje se razvojno okruženje i postupak testiranja
+realizovanog programa na fizičkoj razvojnoj ploči.
+
+Na kraju rada nalazi se zaključak, u kojem su sistematizovani
+najvažniji rezultati i doprinosi rada kao cjeline. Pored zaključka, u
+radu se nalaze i popis slika, kao i lista korištenih referenci.
 
 \newpage
