@@ -35,3 +35,5 @@ docs
 *.eep.hex
 
 build/
+AGENTS.md
+paper_build/

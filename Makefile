@@ -7,7 +7,7 @@ SRC = src/main.S
 HEX = build/main.hex
 LST = build/main.lst
 
-.PHONY: all build flash clean monitor
+.PHONY: all build flash clean monitor paper
 
 all: build
 
@@ -23,6 +23,14 @@ flash: build
 monitor:
 	tio -b 9600 $(PORT)
 
+paper:
+	mkdir -p paper_build
+	TEXINPUTS=.:paper: pdflatex -interaction=nonstopmode -output-directory=paper_build paper/Glavna.tex
+	BIBINPUTS=paper: bibtex paper_build/Glavna
+	TEXINPUTS=.:paper: pdflatex -interaction=nonstopmode -output-directory=paper_build paper/Glavna.tex
+	TEXINPUTS=.:paper: pdflatex -interaction=nonstopmode -output-directory=paper_build paper/Glavna.tex
+
 clean:
 	rm -rf build
+	rm -rf paper_build
 	rm -f src/*.obj src/*.eep.hex src/*.cof

@@ -1,0 +1,86 @@
+%Predložak za seminarski rad%
+%Glavna fajla%
+%
+\documentclass[a4paper, oneside, 12pt]{book}
+\usepackage[utf8]{inputenc} %prepoznavanje dijakritičkih znakova
+\usepackage[T1]{fontenc} %unos dijakritičkih znakova izravno s tipkovnice
+\usepackage[T2A]{fontenc} %унос ћирилићних знакова директно са тастатуре
+\usepackage[russian, english, croatian]{babel} %ruski je važan radi nekim matematskih funkcija
+\usepackage{indentfirst} %uvlačenje prvog paragrafa u odjeljku
+\usepackage{titlesec} %definiranje proreda između raznih naslova
+\usepackage{amsmath, amssymb, amsfonts, esint} %osnovni matematički mod ako se koristi lmodern
+\usepackage{mathrsfs} %matematički mod s klasičnim pisanim slovima, \mathscr{}
+\usepackage[bookmarks, bookmarksnumbered, hidelinks, unicode, pdfpagelayout=SinglePage]{hyperref} %bookmark pdf
+\usepackage{siunitx} %međunarodni sustav mjernih jedinica
+\usepackage[a4paper, left=25mm, right=25mm, top=25mm, bottom=25mm]{geometry} %dimenzije papira
+\usepackage{graphicx} %napredni grafički mod
+\usepackage{color} %definiranje boje simbola i pozadine
+\usepackage[justification=centering]{caption} %centriranje opisa slika i tablica
+\usepackage{float} %podešavanje pozicija slika i tablica
+\usepackage[shortlabels]{enumitem} %podešavanje nabrajanja (slova, brojevi, ...)
+\usepackage{array} %tablice
+\usepackage{setspace} %podešavanje razmaka teskta
+\usepackage{icomma} %zarez kao decimalna razdvojnica
+\usepackage[square,sort,comma,numbers]{natbib} %podešavanje razmaka bibliografije
+\usepackage{fancyhdr} %manipuliranje zaglavljem i podnožjem
+\fancypagestyle{plain} %potrebno zbog numeriranja prve stranice
+\fancyhead{} %brisanje zaglavlja
+\fancyfoot{} %brisanje podnožja
+\cfoot{\footnotesize{\thepage}} %numeriranje prve stranice
+\pagestyle{fancy} %uvijek u kombinaciji s fancyhdr
+\fancyhead{} %brisanje zaglavlja
+\fancyfoot{} %brisanje podnožja
+\fancyhead[C]{\scriptsize{SEMINARSKI RAD: Adi Kadušić}} %zaglavlje
+\fancyfoot[C]{\footnotesize{\thepage}} %podnožje
+\renewcommand{\headrulewidth}{0.4pt} %širina linije za odvajanje zaglavlja
+\renewcommand{\footrulewidth}{0pt} %širina linije za odvajanje podnožja
+\newcommand{\bunderline}[1]{\underline{#1\mkern-4mu}\mkern4mu} %podešava dužinu donje crte
+\newcommand{\boverline}[1]{\overline{#1\mkern-4mu}\mkern4mu} %podešava dužinu gornje crte
+\newlist{inlinelist}{enumerate*}{1} %postavljanje "inline" liste
+\setlist*[inlinelist,1]{label=\textit{\roman*}),} %podešavanje stila "inline" liste
+\setlength{\headheight}{10 mm} %širina zaglavlja
+\setlength{\parindent}{0.5 cm} %dubina uvlačenja prve riječi paragrafa
+\setlength{\parskip}{0.5 em} %veličina proreda između paragrafa
+\setlength{\bibsep}{6 pt} %veličina proreda između bibliografksih referenci
+\titleformat{\chapter}{\normalfont\huge\bf}{\thechapter.}{12pt}{\huge\bf} %naslov poglavlja ...
+\titleformat{\section}{\normalfont\Large\bf}{\thesection.}{12pt}{\Large\bf} %odjeljka ...
+\titleformat{\subsection}{\normalfont\large\bf}{\thesubsection.}{12pt}{\large\bf} %pododjeljka
+\titlespacing\section{0pt}{3em}{1em} %prored oko naslova odjeljka
+\titlespacing\subsection{0pt}{2em}{1em} %prored oko naslova pododjeljka
+
+%
+\begin{document}
+%
+\frontmatter
+	\include{Naslovna}
+	\phantomsection
+	\addcontentsline{toc}{chapter}{Sažetak}
+	\include{Sazetak}
+	\phantomsection
+	\begin{spacing}{0.5}
+		\tableofcontents
+	\end{spacing}
+	\addcontentsline{toc}{chapter}{Sadržaj}	
+	\include{Uvod}
+%
+\mainmatter
+	\include{Poglavlje1}
+	\include{Poglavlje2}
+	\include{Poglavlje3}
+
+%
+\backmatter
+	\include{Zakljucak}
+	\phantomsection
+    \addcontentsline{toc}{chapter}{Popis slika}
+	\begin{spacing}{0.4}
+		\listoffigures
+	\end{spacing}
+	\cleardoublepage
+	\phantomsection
+	\bibliographystyle{unsrtnat}
+	\addcontentsline{toc}{chapter}{Bibliografija}
+	\nocite{*}
+	\bibliography{Reference}
+%
+\end{document}
