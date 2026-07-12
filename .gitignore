@@ -28,3 +28,10 @@ Thumbs.db
 *.synctex.gz
 
 docs
+
+*.hex
+*.obj
+*.cof
+*.eep.hex
+
+build/
