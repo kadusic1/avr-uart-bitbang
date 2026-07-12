@@ -1,10 +1,16 @@
-; padding macro for aligning cycles
+; padding macros for aligning cycles
 .macro PAD8
     nop
     nop
     nop
     nop
     nop
+    nop
+    nop
+    nop
+.endmacro
+
+.macro PAD3
     nop
     nop
     nop
@@ -98,6 +104,9 @@ uart_getc:
         ; rotate temp register right through carry to shift the bit into position 7
         ; takes 1 cycle and shifts previously received bits towards LSB
         ror   temp
+        ; padding to equalize RX block (4 cycles) with TX block (6 cycles)
+        ; so total fixed overhead becomes 10, matching TX exactly
+        PAD3
         ; wait for a full bit period to position the next read at the center of the next bit
         ; consumes the majority of the bit timing cycles
         WAIT_BIT
